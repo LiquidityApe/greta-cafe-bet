@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Scan to Buy</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(180deg, #7b2d9f, #e77c29);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: clamp(2.5rem, 10vw, 5rem);
+      margin: 0 0 30px 0;
+      text-shadow: 0 4px 15px rgba(0,0,0,0.4);
+      font-weight: 900;
+    }
+
+    .qr-container {
+      background: white;
+      padding: 15px;
+      border-radius: 20px;
+      margin: 20px 0 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      width: fit-content;
+    }
+
+    .qr-container img {
+      width: clamp(200px, 65vw, 300px);
+      height: clamp(200px, 65vw, 300px);
+      display: block;
+    }
+
+    .input-group {
+      margin-bottom: 25px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    label {
+      display: block;
+      font-size: clamp(1.3rem, 4vw, 1.8rem);
+      margin-bottom: 10px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.2rem;
+      border: none;
+      border-radius: 50px;
+      background: rgba(255,255,255,0.25);
+      color: white;
+      text-align: center;
+      backdrop-filter: blur(5px);
+    }
+
+    input::placeholder {
+      color: rgba(255,255,255,0.8);
+    }
+
+    input:focus {
+      outline: none;
+      background: rgba(255,255,255,0.35);
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 14px 28px;
+      font-size: clamp(1rem, 3.5vw, 1.3rem);
+      font-weight: bold;
+      border: none;
+      border-radius: 50px;
+      background: rgba(0,0,0,0.45);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      min-width: 180px;
+    }
+
+    button:hover {
+      background: rgba(0,0,0,0.7);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .copied {
+      margin-top: 20px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+
+    /* Extra small phones */
+    @media (max-width: 360px) {
+      h1 { font-size: 2.8rem; }
+      button { min-width: 160px; padding: 12px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>SCAN TO BUY</h1>
+
+  <div class="qr-container">
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=0x60557949bCb2f84c04E312f113F1aBBA215116D8" alt="Wallet QR Code"/>
+  </div>
+
+  <div class="input-group">
+    <label>TELEGRAM USER NAME:</label>
+    <input type="text" placeholder="@yourusername" id="telegram"/>
+  </div>
+
+  <div class="input-group">
+    <label>AMOUNT:</label>
+    <input type="text" placeholder="e.g. 200 VERSE" id="amount"/>
+  </div>
+
+  <div class="buttons">
+    <button id="copyBtn">COPY WALLET ADDRESS</button>
+    <button id="paidBtn">I HAVE PAID</button>
+  </div>
+
+  <div class="copied" id="copiedText">Copied to clipboard!</div>
+
+  <script>
+    const walletAddress = "0x60557949bCb2f84c04E312f113F1aBBA215116D8";
+    const copyBtn = document.getElementById("copyBtn");
+    const copiedText = document.getElementById("copiedText");
+
+    copyBtn.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(walletAddress);
+        copiedText.style.opacity = "1";
+        setTimeout(() => copiedText.style.opacity = "0", 2000);
+      } catch (err) {
+        alert("Copy failed (old browser?). Address: " + walletAddress);
+      }
+    });
+
+    document.getElementById("paidBtn").addEventListener("click", () => {
+      const telegram = document.getElementById("telegram").value.trim();
+      const amount = document.getElementById("amount").value.trim();
+
+      if (!telegram.startsWith("@") && telegram !== "") {
+        alert("Please include @ in your Telegram username");
+        return;
+      }
+      if (!telegram || !amount) {
+        alert("Please fill in both fields");
+        return;
+      }
+
+      alert(`Thank you ${telegram}!\nWe received your payment notification for ${amount}.\nWe'll verify within 5–10 minutes.`);
+      // You can later send this data to your Telegram bot
+    });
+  </script>
+
+</body>
+</html>

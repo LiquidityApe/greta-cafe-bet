@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Greta’s Café Bets – Spin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html {
+      height: 100%;
+      background: linear-gradient(180deg, #7b2d9f 0%, #e77c29 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px 30px;
+      overflow: hidden;
+      color: #fff;
+    }
+
+    /* Header & Main (unchanged) */
+    .header { width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; z-index: 10; }
+    .settings-icon { width: 50px; height: 50px; background: url('setting.png') center/contain no-repeat; cursor: pointer; transition: transform 0.3s; }
+    .settings-icon:hover { transform: rotate(90deg); }
+    .wallet { width: 100px; height: 50px; background: url('wallet.png') center/contain no-repeat; border: 3px solid #e77c29; border-radius: 25px; }
+    .main-content { display: flex; align-items: center; justify-content: center; gap: 50px; flex: 1; width: 100%; max-width: 900px; }
+    .greta { width: 240px; height: 280px; background: url('Gretaa.png') center/contain no-repeat; }
+    .wheel-container { position: relative; width: 250px; height: 250px; }
+    .wheel { width: 100%; height: 100%; background: url('wheel.png') center/cover no-repeat; border-radius: 50%; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(1080deg); } }
+    .pointer {
+      position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+      border-left: 18px solid transparent; border-right: 18px solid transparent;
+      border-top: 36px solid #d35400; z-index: 2;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.92); display: flex; align-items: center; justify-content: center;
+      z-index: 9999; opacity: 0; visibility: hidden; transition: opacity 0.5s ease;
+    }
+    .modal-overlay.show { opacity: 1; visibility: visible; }
+
+    .modal-content {
+      background: linear-gradient(135deg, #9b59b6, #e67e22);
+      padding: 70px 50px; border-radius: 30px; text-align: center; max-width: 90%;
+      box-shadow: 0 0 60px rgba(255,255,255,0.7);
+      transform: translateY(150vh);
+      transition: transform 1.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    .modal-overlay.show .modal-content { transform: translateY(0); }
+
+    .modal-content h1 { font-size: 3rem; margin-bottom: 15px; text-shadow: 0 4px 15px rgba(0,0,0,0.6); }
+    .modal-content p { font-size: 1.5rem; margin-bottom: 40px; opacity: 0.9; }
+
+    /* ONLY GLOW PULSE — NO BREATHING/SCALING */
+    @keyframes glowPulse {
+      0%, 100%   { box-shadow: 0 0 20px rgba(255,255,255,0.5), 0 10px 30px rgba(0,0,0,0.4); }
+      50%        { box-shadow: 0 0 50px rgba(255,255,255,1),   0 15px 40px rgba(0,0,0,0.6); }
+    }
+
+    .modal-btn {
+      position: relative;
+      padding: 22px 60px;
+      font-size: 1.7rem;
+      font-weight: 900;
+      color: white;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      overflow: hidden;
+      animation: glowPulse 3s ease-in-out infinite;   /* Only glow breathing */
+      transition: all 0.3s ease;
+    }
+
+    .modal-btn:hover {
+      animation-play-state: paused;
+      transform: translateY(-6px);
+      box-shadow: 0 0 60px rgba(255,255,255,1), 0 20px 50px rgba(0,0,0,0.7) !important;
+    }
+
+    .buy-coffee  { background: #27ae60; }
+    .maybe-later { background: #95a5a6; }
+
+    /* Ripple on click */
+    .modal-btn::after {
+      content: ""; position: absolute; top: 50%; left: 50%;
+      width: 0; height: 0; background: rgba(255,255,255,0.4);
+      border-radius: 50%; transform: translate(-50%,-50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    .modal-btn.ripple::after { width: 400px; height: 400px; opacity: 0; }
+  </style>
+</head>
+<body>
+
+  <div class="modal-overlay" id="welcomeModal">
+    <div class="modal-content">
+      <h1>Welcome to Greta’s Café Bets</h1>
+      <p>Grab a coffee & spin to win big! (Coffee + Wheel)</p>
+      <div style="display:flex; flex-direction:column; gap:25px; margin-top:20px;">
+        <button class="modal-btn buy-coffee"   id="buyCoffeeBtn">BUY COFFEE</button>
+        <button class="modal-btn maybe-later"  id="maybeLaterBtn">MAYBE LATER</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="header">
+    <div class="settings-icon" id="settingsBtn"></div>
+    <div class="wallet"></div>
+  </div>
+  <div class="main-content">
+    <div class="greta"></div>
+    <div class="wheel-container">
+      <div class="pointer"></div>
+      <div class="wheel" id="wheel"></div>
+    </div>
+  </div>
+
+  <audio id="spinSound" preload="auto">
+    <source src="spin-sound.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    const modal     = document.getElementById('welcomeModal');
+    const buyBtn    = document.getElementById('buyCoffeeBtn');
+    const laterBtn  = document.getElementById('maybeLaterBtn');
+    const wheel     = document.getElementById('wheel');
+    const spinSound = document.getElementById('spinSound');
+
+    window.addEventListener('load', () => {
+      setTimeout(() => modal.classList.add('show'), 200);
+    });
+
+    function addRipple(btn) {
+      btn.classList.remove('ripple');
+      void btn.offsetWidth;
+      btn.classList.add('ripple');
+    }
+
+    buyBtn.addEventListener('click', () => {
+      addRipple(buyBtn);
+      modal.classList.remove('show');
+      setTimeout(() => {
+        spinSound.play().catch(() => {});
+        wheel.style.animation = 'spin 3s ease-out forwards';
+        setTimeout(() => window.location.href = 'Payment.html', 3200);
+      }, 500);
+    });
+
+    laterBtn.addEventListener('click', () => {
+      addRipple(laterBtn);
+      modal.classList.remove('show');
+      setTimeout(() => window.location.href = 'index.html', 500);
+    });
+  </script>
+</body>
+</html>
