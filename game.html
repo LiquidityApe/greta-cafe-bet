@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Greta's Café - Roll the Dice</title>
+  <link rel="icon" href="images/Greta-transparent.png" type="image/png">
+  <link rel="apple-touch-icon" href="images/Greta-transparent.png">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -120,15 +122,46 @@
     }
     input::placeholder { color: rgba(255,255,255,0.75); }
     input:focus { outline: none; background: rgba(255,255,255,0.35); }
+    input:disabled {
+      background: rgba(255,255,255,0.15);
+      color: #ccc;
+      cursor: not-allowed;
+      opacity: 0.7;
+    }
 
+    .button-group {
+      display: flex;
+      gap: 15px;
+      margin-top: 30px;
+      max-width: 420px;
+      width: 100%;
+    }
+    .submit-btn, .exit-btn {
+      flex: 1;
+      padding: 18px 30px;
+      font-size: 1.3rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
     .submit-btn {
-      margin-top: 30px; padding: 18px 60px; font-size: 1.4rem; font-weight: bold;
-      background: #feca57; color: #333; border: none; border-radius: 50px; cursor: pointer;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: all 0.3s;
+      background: #feca57; color: #333;
+    }
+    .exit-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 2px solid rgba(255,255,255,0.4);
     }
     .submit-btn:disabled { background: #444 !important; cursor: not-allowed; opacity: 0.8; }
     .submit-btn:hover:not(:disabled) {
       transform: translateY(-5px); background: #ff9f43; box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+    }
+    .exit-btn:hover {
+      background: rgba(255,255,255,0.3);
+      transform: translateY(-5px);
     }
 
     .live-counter {
@@ -138,6 +171,56 @@
     .live-counter .big { font-size: 4.5rem; font-weight: bold; color: #feca57; }
     .live-counter .status { font-size: 1.4rem; margin-top: 10px; font-weight: 500; }
 
+    .wallet-status {
+      background: rgba(0,0,0,0.4);
+      padding: 20px;
+      border-radius: 20px;
+      margin: 20px auto;
+      max-width: 420px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      transform: translateY(20px);
+      transition: all 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .wallet-status.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .wallet-status .address {
+      font-family: 'Courier New', monospace;
+      font-size: 1.4rem;
+      font-weight: bold;
+      color: #feca57;
+      margin: 10px 0;
+    }
+    .disconnect-btn {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: 1px solid rgba(255,255,255,0.3);
+      padding: 10px 20px;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    /* DICE NUMBER OVERLAY */
+    .dice-number {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 9rem;
+      font-weight: bold;
+      color: #222;
+      text-shadow: 0 0 30px rgba(255,255,255,0.8);
+      z-index: 10;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s;
+    }
+    .dice-number.show { opacity: 1; }
+
     /* EPIC 3D DICE */
     .dice-container {
       perspective: 1200px;
@@ -145,6 +228,7 @@
       height: clamp(240px, 70vw, 340px);
       margin: 40px auto;
       display: none;
+      position: relative;
     }
     .dice {
       width: 100%; height: 100%; position: relative;
@@ -201,13 +285,34 @@
   <div id="gretaCoffeeScreen">
     <img src="images/Greta-transparent.png" alt="Here's your coffee!">
     <h1>Here's your coffee!</h1>
-    <p>Enter your info below to roll the dice:</p>
+    <p id="infoText">Enter your info below to roll the dice:</p>
 
     <div class="live-counter">
       <div class="big"><span id="liveCounter">0</span><span style="font-size:2.2rem;opacity:0.7;">/6</span></div>
       <div class="status" id="statusText">Loading players...</div>
     </div>
 
+    <!-- CONNECTED STATE (appears instantly) -->
+    <div id="connectedStatus" class="wallet-status">
+      <div>Connected</div>
+      <div class="address" id="shortAddress"></div>
+      <div>Telegram <span id="shortTelegram"></span></div>
+      <button class="disconnect-btn" id="disconnectBtn">Disconnect Wallet</button>
+    </div>
+
+    <!-- INPUTS (hidden when connected) -->
+    <div id="inputSection">
+      <div class="input-group">
+        <label for="telegramInput">Telegram Handle</label>
+        <input type="text" id="telegramInput" placeholder="@yourusername" />
+      </div>
+      <div class="input-group">
+        <label for="polygonInput">Polygon Address</label>
+        <input type="text" id="polygonInput" placeholder="0x..." />
+      </div>
+    </div>
+
+    <!-- DICE WITH BIG NUMBER OVERLAY -->
     <div class="dice-container" id="diceContainer">
       <div class="dice" id="dice">
         <div class="face front"><div class="dots one"><div class="dot" style="grid-area: b;"></div></div></div>
@@ -217,18 +322,14 @@
         <div class="face top"><div class="dots five"><div class="dot" style="grid-area: a;"></div><div class="dot" style="grid-area: b;"></div><div class="dot" style="grid-area: c;"></div><div class="dot" style="grid-area: d;"></div><div class="dot" style="grid-area: e;"></div></div></div>
         <div class="face bottom"><div class="dots six"><div class="dot" style="grid-area: a;"></div><div class="dot" style="grid-area: b;"></div><div class="dot" style="grid-area: c;"></div><div class="dot" style="grid-area: d;"></div><div class="dot" style="grid-area: e;"></div><div class="dot" style="grid-area: f;"></div></div></div>
       </div>
+      <div class="dice-number" id="diceNumber"></div>
     </div>
 
-    <div class="input-group">
-      <label for="telegramInput">Telegram Handle</label>
-      <input type="text" id="telegramInput" placeholder="@yourusername" />
+    <!-- BUTTON GROUP: Roll + Exit -->
+    <div class="button-group">
+      <button class="submit-btn" id="submitDiceRoll">Submit & Roll Dice</button>
+      <button class="exit-btn" id="exitGameBtn">Exit Game</button>
     </div>
-    <div class="input-group">
-      <label for="polygonInput">Polygon Address</label>
-      <input type="text" id="polygonInput" placeholder="0x..." />
-    </div>
-
-    <button class="submit-btn" id="submitDiceRoll">Submit & Roll Dice</button>
   </div>
 
   <form id="googleForm" action="https://docs.google.com/forms/d/e/1FAIpQLSeScqtPJIoOIio2zw_Jb951MaXaLXfoOpvqkIeYpRMRAyqb0g/formResponse" method="POST" target="hidden_iframe" style="display:none;">
@@ -257,11 +358,70 @@
     const alertOverlay = document.getElementById('customAlert');
     const alertMessage = document.getElementById('alertMessage');
     const submitBtn = document.getElementById('submitDiceRoll');
+    const exitBtn = document.getElementById('exitGameBtn');
     const diceContainer = document.getElementById('diceContainer');
     const dice = document.getElementById('dice');
+    const diceNumber = document.getElementById('diceNumber');
     const liveCounter = document.getElementById('liveCounter');
     const statusText = document.getElementById('statusText');
+    const inputSection = document.getElementById('inputSection');
+    const connectedStatus = document.getElementById('connectedStatus');
+    const shortAddress = document.getElementById('shortAddress');
+    const shortTelegram = document.getElementById('shortTelegram');
+    const infoText = document.getElementById('infoText');
+    const telegramInput = document.getElementById('telegramInput');
+    const polygonInput = document.getElementById('polygonInput');
     let isSubmitting = false;
+
+    function truncateAddress(addr) {
+      if (!addr || addr.length < 11) return addr;
+      return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+    }
+
+    // REAL-TIME DOM UPDATE ON CONNECT
+    function connectWallet(tg, poly) {
+      localStorage.setItem('greta_telegram', tg);
+      localStorage.setItem('greta_polygon', poly);
+
+      shortAddress.textContent = truncateAddress(poly);
+      shortTelegram.textContent = tg;
+      connectedStatus.classList.add('show');
+      inputSection.style.opacity = '0';
+      setTimeout(() => {
+        inputSection.style.display = 'none';
+        connectedStatus.style.display = 'block';
+      }, 400);
+
+      infoText.textContent = "You're connected! Ready to roll.";
+      submitBtn.textContent = "Roll Dice Now";
+
+      // DISABLE INPUTS
+      telegramInput.value = tg;
+      polygonInput.value = poly;
+      telegramInput.disabled = true;
+      polygonInput.disabled = true;
+    }
+
+    function checkConnection() {
+      const savedTelegram = localStorage.getItem('greta_telegram');
+      const savedPolygon = localStorage.getItem('greta_polygon');
+
+      if (savedTelegram && savedPolygon) {
+        connectWallet(savedTelegram, savedPolygon);
+      }
+    }
+
+    // DISCONNECT → LOG OUT TO index.html
+    document.getElementById('disconnectBtn').onclick = () => {
+      localStorage.removeItem('greta_telegram');
+      localStorage.removeItem('greta_polygon');
+      location.href = "index.html";
+    };
+
+    // EXIT GAME BUTTON
+    exitBtn.onclick = () => {
+      location.href = "index.html";
+    };
 
     const diceRotations = {
       1: 'rotateX(0deg) rotateY(0deg)',
@@ -315,12 +475,13 @@
         const left = 6 - s.totalEntries;
         statusText.innerHTML = `<span style='color:#aaffaa'>${left} spot${left>1?'s':''} left — Go!</span>`;
         submitBtn.disabled = false;
-        submitBtn.textContent = `Submit & Roll Dice (${s.totalEntries}/6)`;
       }
     }
 
     async function rollDice(finalNumber) {
       diceContainer.style.display = 'block';
+      diceNumber.textContent = "";
+      diceNumber.classList.remove('show');
       submitBtn.textContent = "ROLLING THE DICE...";
       submitBtn.disabled = true;
 
@@ -333,6 +494,11 @@
       setTimeout(() => {
         dice.style.transition = 'transform 1.4s cubic-bezier(0.2, 0.9, 0.3, 1)';
         dice.style.transform = diceRotations[finalNumber];
+
+        setTimeout(() => {
+          diceNumber.textContent = finalNumber;
+          diceNumber.classList.add('show');
+        }, 800);
       }, 4200);
     }
 
@@ -340,6 +506,8 @@
     updateUI();
 
     document.addEventListener("DOMContentLoaded", () => {
+      checkConnection();
+
       document.getElementById('buyCoffeeBtn').onclick = async () => {
         const s = await getGameState();
         if (s.totalEntries >= 6) { showAlert("Game is full!"); return; }
@@ -357,12 +525,22 @@
         if (isSubmitting) return;
         isSubmitting = true;
 
-        const tg = document.getElementById('telegramInput').value.trim();
-        const poly = document.getElementById('polygonInput').value.trim();
+        let tg, poly;
 
-        if (!tg || !poly) { showAlert("Fill both fields!"); isSubmitting = false; await updateUI(); return; }
-        if (!tg.startsWith('@')) { showAlert("Telegram must start with @"); isSubmitting = false; await updateUI(); return; }
-        if (!poly.startsWith('0x') || poly.length < 30) { showAlert("Invalid Polygon address"); isSubmitting = false; await updateUI(); return; }
+        if (localStorage.getItem('greta_telegram') && localStorage.getItem('greta_polygon')) {
+          tg = localStorage.getItem('greta_telegram');
+          poly = localStorage.getItem('greta_polygon');
+        } else {
+          tg = telegramInput.value.trim();
+          poly = polygonInput.value.trim();
+
+          if (!tg || !poly) { showAlert("Fill both fields!"); isSubmitting = false; return; }
+          if (!tg.startsWith('@')) { showAlert("Telegram must start with @"); isSubmitting = false; return; }
+          if (!poly.startsWith('0x') || poly.length < 30) { showAlert("Invalid Polygon address"); isSubmitting = false; return; }
+
+          // INSTANT DOM TRANSITION
+          connectWallet(tg, poly);
+        }
 
         const state = await getGameState();
         if (state.totalEntries >= 6) {
@@ -374,11 +552,10 @@
 
         const outcome = state.available[Math.floor(Math.random() * state.available.length)];
         const spinValue = state.winners < 3 && (state.totalEntries >= 3 || Math.random() < 0.5) ? "1" : "0";
-        const trackCode = generateTrackCode(); // Still generated & saved — but hidden from user
+        const trackCode = generateTrackCode();
 
         await rollDice(outcome);
 
-        // Submit to Google Form (track code saved silently)
         document.getElementById('entry_trackcode').value = trackCode;
         document.getElementById('entry_telegram').value = tg;
         document.getElementById('entry_polygon').value = poly;
@@ -386,7 +563,6 @@
         document.getElementById('entry_spin').value = spinValue;
         document.getElementById('googleForm').submit();
 
-        // CLEAN RESULT — NO TRACK CODE SHOWN TO USER
         setTimeout(() => {
           const msg = spinValue === "1"
             ? `JACKPOT!<br><br>You rolled a <b>${outcome}</b><br><br>YOU WON THE PRIZE!`
@@ -396,13 +572,12 @@
 
           setTimeout(() => {
             diceContainer.style.display = 'none';
+            diceNumber.classList.remove('show');
             updateUI();
             isSubmitting = false;
+            submitBtn.textContent = "Roll Dice Now";
           }, 4000);
         }, 5600);
-
-        document.getElementById('telegramInput').value = '';
-        document.getElementById('polygonInput').value = '';
       };
     });
   </script>
